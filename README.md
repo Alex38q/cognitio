@@ -38,7 +38,7 @@ Welcome to the future!
 
 ##### PoS Rewards:
 
-*	since block 1500 : 5
+*	since block 500 : 5
 *	since block 210,000 : 5
 *	since block 420,001 : 4
 *	since block 630,001 : 3
