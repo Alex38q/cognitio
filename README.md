@@ -1,6 +1,8 @@
 # Cognitio Staging Tree
 
-Welcome to the future!
+Cognitio is a secure decentralized network utilizing masternodes as its neural network points. Using a low-inflation, low-supply chain helps ensure value. In addition, Cognitio will deploy a high-frequency quantitative signal A.I. trading bot that will give its users a definitive advantage over legacy solutions due to its accuracy and autonomy.
+
+
 
 ## Main futures:
 
