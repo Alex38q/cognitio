@@ -6,8 +6,8 @@ Cognitio is a secure decentralized network utilizing masternodes as its neural n
 
 ## Main futures:
 
-*	ASIC Resistance
 *	Nvidia & AMD GPU Mining
+*	ASIC Resistance
 *	Instamine Protection
 *	Wallet Built-in Block Explorer
 *	Masternode Reward Protection
