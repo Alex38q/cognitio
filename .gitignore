@@ -44,3 +44,4 @@ CMakeLists.txt.user*
 
 build/*
 *.rej
+/cognitio-qt
