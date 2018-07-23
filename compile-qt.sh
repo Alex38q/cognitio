@@ -7,5 +7,5 @@ chmod 755 src/secp256k1/autogen.sh
 cd src/leveldb
 make libleveldb.a libmemenv.a
 cd ../..
-qmake -qt=qt5
+qmake-qt5
 make
