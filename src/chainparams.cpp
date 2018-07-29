@@ -133,6 +133,8 @@ public:
 
         nLastPOWBlock = 210000;
         nPOSStartBlock = 500;
+
+        nBudgetFeeConfirmations = 6; // Number of confirmations for the finalization fee
     }
 
     virtual const CBlock& GenesisBlock() const { return genesis; }

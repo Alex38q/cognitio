@@ -74,6 +74,7 @@ public:
     std::string DarksendPoolDummyAddress() const { return strDarksendPoolDummyAddress; }
     //std::string SporkKey() const { return strSporkKey; }
     //std::string MasternodePaymentPubKey() const { return strMasternodePaymentsPubKey; }
+    int64_t BudgetFeeConfirmations() const { return nBudgetFeeConfirmations; }
 protected:
     CChainParams() {};
 
@@ -94,6 +95,7 @@ protected:
     std::string strDarksendPoolDummyAddress;
     //std::string strSporkKey;
     //std::string strMasternodePaymentsPubKey;
+    int64_t nBudgetFeeConfirmations; // Governance
 };
 
 /**

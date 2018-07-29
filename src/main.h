@@ -16,6 +16,8 @@
 
 #include <list>
 
+#include <boost/unordered_map.hpp>
+
 class CValidationState;
 
 #define START_MASTERNODE_PAYMENTS_TESTNET 1234567890
@@ -78,10 +80,17 @@ static const unsigned char REJECT_INVALID = 0x10;
 
 inline int64_t GetMNCollateral(int nHeight) { return 10000; }
 
+// From Phore.
+struct BlockHasher {
+    size_t operator()(const uint256& hash) const { return hash.GetLow64(); }
+};
+
 extern CScript COINBASE_FLAGS;
 extern CCriticalSection cs_main;
 extern CTxMemPool mempool;
+typedef boost::unordered_map<uint256, CBlockIndex*, BlockHasher> BlockMap; // QoL from Phore.
 extern std::map<uint256, CBlockIndex*> mapBlockIndex;
+extern BlockMap mapBlockIndexH;
 extern std::set<std::pair<COutPoint, unsigned int> > setStakeSeen;
 extern CBlockIndex* pindexGenesisBlock;
 extern int nStakeMinConfirmations;
@@ -250,6 +259,8 @@ typedef std::map<uint256, std::pair<CTxIndex, CTransaction> > MapPrevTx;
 
 int64_t GetMinFee(const CTransaction& tx, unsigned int nBytes, bool fAllowFree, enum GetMinFee_mode mode);
 
+
+struct CMutableTransaction; // From Phore.
 
 
 /** The basic transaction that is broadcasted on the network and contained in
@@ -447,8 +458,80 @@ public:
     const CTxOut& GetOutputFor(const CTxIn& input, const MapPrevTx& inputs) const;
 };
 
+/** A mutable version of CTransaction. */
+/** From Phore. */
+struct CMutableTransaction
+{
+    int32_t nVersion;
+    unsigned int nTime;
+    std::vector<CTxIn> vin;
+    std::vector<CTxOut> vout;
+    uint32_t nLockTime;
 
+    // Denial-of-service detection:
+    mutable int nDoS;
+    bool DoS(int nDoSIn, bool fIn) const { nDoS += nDoSIn; return fIn; }
 
+    CMutableTransaction() 
+    { 
+        SetNull(); 
+    }
+
+    CMutableTransaction(const CTransaction& tx) : nVersion(tx.nVersion), nTime(tx.nTime), vin(tx.vin), vout(tx.vout), nLockTime(tx.nLockTime), nDoS(0)
+    { }
+
+    IMPLEMENT_SERIALIZE
+    (
+        READWRITE(this->nVersion);
+        nVersion = this->nVersion;
+        READWRITE(nTime);
+        READWRITE(vin);
+        READWRITE(vout);
+        READWRITE(nLockTime);
+    )
+
+    uint256 GetHash() const
+    {
+        return SerializeHash(*this);
+    }
+
+    std::string ToString() const
+    {
+        std::string str;
+        str += strprintf("CMutableTransaction(ver=%d, nTime=%u, vin.size=%u, vout.size=%u, nLockTime=%u)\n",
+            nVersion,
+            nTime,
+            vin.size(),
+            vout.size(),
+            nLockTime);
+        for (unsigned int i = 0; i < vin.size(); i++)
+            str += "    " + vin[i].ToString() + "\n";
+        for (unsigned int i = 0; i < vout.size(); i++)
+            str += "    " + vout[i].ToString() + "\n";
+        return str;
+    }
+
+    void SetNull()
+    {
+        nVersion = CTransaction::CURRENT_VERSION;
+        nTime = GetAdjustedTime();
+        vin.clear();
+        vout.clear();
+        nLockTime = 0;
+        nDoS = 0;  // Denial-of-service prevention
+    }
+
+    friend bool operator==(const CMutableTransaction& a, const CMutableTransaction& b)
+    {
+        return a.GetHash() == b.GetHash();
+    }
+
+    friend bool operator!=(const CMutableTransaction& a, const CMutableTransaction& b)
+    {
+        return !(a == b);
+    }
+
+};
 
 /** wrapper for CTxOut that provides a more compact serialization */
 class CTxOutCompressor
