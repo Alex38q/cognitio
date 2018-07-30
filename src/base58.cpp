@@ -378,3 +378,29 @@ bool CBitcoinAddress::GetKeyID(CKeyID &keyID) const {
 bool CBitcoinAddress::IsScript() const {
     return IsValid() && vchVersion == Params().Base58Prefix(script_address);
 }
+
+class DestinationEncoder : public boost::static_visitor<std::string>
+{
+public:
+    std::string operator()(const CKeyID& id) const
+    {
+        std::vector<unsigned char> data = Params().Base58Prefix(CChainParams::PUBKEY_ADDRESS);
+        data.insert(data.end(), id.begin(), id.end());
+        return EncodeBase58Check(data);
+    }
+
+    std::string operator()(const CScriptID& id) const
+    {
+        std::vector<unsigned char> data = Params().Base58Prefix(CChainParams::SCRIPT_ADDRESS);
+        data.insert(data.end(), id.begin(), id.end());
+        return EncodeBase58Check(data);
+    }
+
+    std::string operator()(const CStealthAddress& stealth) const { return {}; }
+    std::string operator()(const CNoDestination& no) const { return {}; }
+};
+
+std::string EncodeDestination(const CTxDestination& dest)
+{
+    return boost::apply_visitor(DestinationEncoder(), dest);
+}

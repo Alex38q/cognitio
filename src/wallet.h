@@ -318,10 +318,10 @@ public:
     // respect current settings
     int GetInputDarksendRounds(CTxIn in) const;
 
+    bool GetBudgetSystemCollateralTX(CWalletTx& tx, uint256 hash, bool useIX); // From Phore.
+
     bool IsDenominated(const CTxIn &txin) const;
-
     bool IsDenominated(const CTransaction& tx) const;
-
     bool IsDenominatedAmount(int64_t nInputAmount) const;
 
 

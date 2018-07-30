@@ -4200,6 +4200,7 @@ build/wallet.o: src/wallet.cpp src/wallet.h \
 		src/masternode.h \
 		src/init.h \
 		src/masternodeman.h \
+		src/masternode-budget.h \
 		src/masternode-payments.h \
 		src/darksend-relay.h \
 		src/instantx.h \

@@ -19,6 +19,7 @@
 #include "darksend.h"
 #include "instantx.h"
 #include "masternodeman.h"
+#include "masternode-budget.h"
 #include "masternode-payments.h"
 #include "chainparams.h"
 #include "smessage.h"
@@ -2332,6 +2333,31 @@ bool CWallet::CreateCollateralTransaction(CTransaction& txCollateral, std::strin
             return false;
         }
         vinNumber++;
+    }
+
+    return true;
+}
+
+// From Phore.
+bool CWallet::GetBudgetSystemCollateralTX(CWalletTx& tx, uint256 hash, bool useIX)
+{
+    // make our change address
+    CReserveKey reservekey(pwalletMain);
+
+    CScript scriptChange;
+    scriptChange << OP_RETURN << ToByteVector(hash);
+
+    CAmount nFeeRet = 0;
+    int nChangePos = 0;
+    std::string strFail = "";
+    vector<pair<CScript, CAmount> > vecSend;
+    vecSend.push_back(make_pair(scriptChange, GetBudgetSystemCollateralAmount(nBestHeight)));
+
+    CCoinControl* coinControl = NULL;
+    bool success = CreateTransaction(vecSend, tx, reservekey, nFeeRet, nChangePos, strFail, coinControl, ALL_COINS, useIX);
+    if (!success) {
+        LogPrintf("GetBudgetSystemCollateralTX: Error - %s\n", strFail);
+        return false;
     }
 
     return true;

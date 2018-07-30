@@ -179,4 +179,6 @@ public:
     bool IsScript() const;
 };
 
+std::string EncodeDestination(const CTxDestination& dest);
+
 #endif // BITCOIN_BASE58_H
