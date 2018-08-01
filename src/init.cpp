@@ -1056,6 +1056,9 @@ bool AppInit2(boost::thread_group& threadGroup)
         activeMasternode.ManageStatus();
     }
 
+    //get the mode of budget voting for this masternode
+    strBudgetMode = GetArg("-budgetvotemode", "auto");
+
     if(GetBoolArg("-mnconflock", false)) {
         LogPrintf("Locking Masternodes:\n");
         uint256 mnTxHash;
@@ -1098,6 +1101,7 @@ bool AppInit2(boost::thread_group& threadGroup)
     LogPrintf("nInstantXDepth %d\n", nInstantXDepth);
     LogPrintf("Darksend rounds %d\n", nDarksendRounds);
     LogPrintf("Anonymize Cognitio Amount %d\n", nAnonymizeCognitioAmount);
+    LogPrintf("Budget Mode %s\n", strBudgetMode.c_str());
 
     /* Denominations
        A note about convertability. Within Darksend pools, each denomination

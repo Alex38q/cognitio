@@ -11,6 +11,7 @@
 #include "masternode-budget.h"
 #include "masternode.h"
 #include "masternodeman.h"
+#include "masternode-sync.h"
 #include "util.h"
 #include <boost/filesystem.hpp>
 #include <boost/lexical_cast.hpp>

@@ -104,6 +104,8 @@ bool fLogTimestamps = false;
 bool fMasternodeSoftLock = false;
 volatile bool fReopenDebugLog = false;
 
+string strBudgetMode = "";
+
 // Init OpenSSL library multithreading support
 static CCriticalSection** ppmutexOpenSSL;
 void locking_callback(int mode, int i, const char* file, int line)
