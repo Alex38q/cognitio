@@ -45,6 +45,10 @@ public:
     std::string ToString() const;
     std::string ToStringShort() const;
 
+    uint256 GetHash()
+    {
+        return Hash(BEGIN(hash), END(hash), BEGIN(n), END(n));
+    }
 };
 
 /** An inpoint - a combination of a transaction and an index n into its vin */

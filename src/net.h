@@ -125,6 +125,13 @@ enum {
     MSG_SPORK,
     MSG_MASTERNODE_WINNER,
     MSG_MASTERNODE_SCANNING_ERROR,
+    MSG_BUDGET_VOTE,
+    MSG_BUDGET_PROPOSAL,
+    MSG_BUDGET_FINALIZED,
+    MSG_BUDGET_FINALIZED_VOTE,
+    MSG_MASTERNODE_QUORUM,
+    MSG_MASTERNODE_ANNOUNCE,
+    MSG_MASTERNODE_PING,
     MSG_DSTX
 };
 
@@ -935,6 +942,7 @@ class CTransaction;
 void RelayTransaction(const CTransaction& tx, const uint256& hash);
 void RelayTransaction(const CTransaction& tx, const uint256& hash, const CDataStream& ss);
 void RelayTransactionLockReq(const CTransaction& tx, bool relayToAll=false);
+void RelayInv(CInv& inv);
 
 /** Access to the (IP) address database (peers.dat) */
 class CAddrDB

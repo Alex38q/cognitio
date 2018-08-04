@@ -19,6 +19,7 @@
 #include "instantx.h"
 #include "darksend.h"
 #include "masternodeman.h"
+#include "masternode-budget.h"
 #include "masternode-payments.h"
 #include "spork.h"
 #include "smessage.h"
@@ -4243,6 +4244,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
 
         darkSendPool.ProcessMessageDarksend(pfrom, strCommand, vRecv);
         mnodeman.ProcessMessage(pfrom, strCommand, vRecv);
+        budget.ProcessMessage(pfrom, strCommand, vRecv);
         ProcessMessageMasternodePayments(pfrom, strCommand, vRecv);
         ProcessMessageInstantX(pfrom, strCommand, vRecv);
         ProcessSpork(pfrom, strCommand, vRecv);

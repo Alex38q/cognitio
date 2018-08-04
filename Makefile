@@ -3497,6 +3497,7 @@ build/main.o: src/main.cpp src/main.h \
 		src/activemasternode.h \
 		src/masternode.h \
 		src/masternodeman.h \
+		src/masternode-budget.h \
 		src/masternode-payments.h \
 		src/darksend-relay.h \
 		src/spork.h \

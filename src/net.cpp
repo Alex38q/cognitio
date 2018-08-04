@@ -1946,6 +1946,17 @@ void RelayTransactionLockReq(const CTransaction& tx, bool relayToAll)
 
 }
 
+void RelayInv(CInv& inv)
+{
+    LOCK(cs_vNodes);
+    BOOST_FOREACH (CNode* pnode, vNodes) {
+        if ((pnode->nServices == NODE_BLOOM_WITHOUT_MN) && inv.IsMasterNodeType())
+            continue;
+        if (pnode->nVersion >= ActiveProtocol())
+            pnode->PushInventory(inv);
+    }
+}
+
 void CNode::RecordBytesRecv(uint64_t bytes)
 {
     LOCK(cs_totalBytesRecv);

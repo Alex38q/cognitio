@@ -22,12 +22,14 @@ static const char* ppszTypeName[] =
     "tx lock vote",
     "spork",
     "masternode winner",
-    "unknown",
-    "unknown",
-    "unknown",
-    "unknown",
-    "unknown",
-    "unknown"
+    "mn scan error",
+    "mn budget vote",
+    "mn budget proposal",
+    "mn budget finalized",
+    "mn budget finalized vote",
+    "mn quorum",
+    "mn announce",
+    "mn ping"
 };
 
 CMessageHeader::CMessageHeader()
@@ -139,6 +141,11 @@ bool operator<(const CInv& a, const CInv& b)
 bool CInv::IsKnownType() const
 {
     return (type >= 1 && type < (int)ARRAYLEN(ppszTypeName));
+}
+
+bool CInv::IsMasterNodeType() const
+{
+    return (type >= 6);
 }
 
 const char* CInv::GetCommand() const
