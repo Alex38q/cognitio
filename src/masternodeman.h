@@ -68,6 +68,11 @@ private:
     std::map<COutPoint, int64_t> mWeAskedForMasternodeListEntry;
 
 public:
+    // Keep track of all broadcasts I've seen
+    map<uint256, CMasternodeBroadcast> mapSeenMasternodeBroadcast;
+    // Keep track of all pings I've seen
+    map<uint256, CMasternodePing> mapSeenMasternodePing;
+
     // keep track of dsq count to prevent masternodes from gaming darksend queue
     int64_t nDsqCount;
 
@@ -85,6 +90,9 @@ public:
                 READWRITE(mWeAskedForMasternodeList);
                 READWRITE(mWeAskedForMasternodeListEntry);
                 READWRITE(nDsqCount);
+
+                READWRITE(mapSeenMasternodeBroadcast);
+                READWRITE(mapSeenMasternodePing);
         }
     )
 

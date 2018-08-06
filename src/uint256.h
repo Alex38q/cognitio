@@ -389,6 +389,11 @@ public:
         return pn[2*n] | (uint64_t)pn[2*n+1] << 32;
     }
 
+    uint32_t Get32(int n = 0) const
+    {
+        return pn[2 * n];
+    }
+
     uint64_t GetLow64() const
     {
         assert(WIDTH >= 2);

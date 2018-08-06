@@ -254,6 +254,20 @@ void CMasternodeMan::CheckAndRemove()
     while(it != vMasternodes.end()){
         if((*it).activeState == CMasternode::MASTERNODE_REMOVE || (*it).activeState == CMasternode::MASTERNODE_VIN_SPENT || (*it).protocolVersion < nMasternodeMinProtocol){
             LogPrint("masternode", "CMasternodeMan: Removing inactive masternode %s - %i now\n", (*it).addr.ToString().c_str(), size() - 1);
+
+            //erase all of the broadcasts we've seen from this vin
+            // -- if we missed a few pings and the node was removed, this will allow is to get it back without them
+            //    sending a brand new mnb
+            map<uint256, CMasternodeBroadcast>::iterator it3 = mapSeenMasternodeBroadcast.begin();
+            while (it3 != mapSeenMasternodeBroadcast.end()) {
+                if ((*it3).second.vin == (*it).vin) {
+                    masternodeSync.mapSeenSyncMNB.erase((*it3).first);
+                    mapSeenMasternodeBroadcast.erase(it3++);
+                } else {
+                    ++it3;
+                }
+            }
+
             it = vMasternodes.erase(it);
         } else {
             ++it;
@@ -290,6 +304,26 @@ void CMasternodeMan::CheckAndRemove()
         }
     }
 
+    // remove expired mapSeenMasternodeBroadcast
+    map<uint256, CMasternodeBroadcast>::iterator it3 = mapSeenMasternodeBroadcast.begin();
+    while (it3 != mapSeenMasternodeBroadcast.end()) {
+        if ((*it3).second.lastPing.sigTime < GetTime() - (MASTERNODE_REMOVAL_SECONDS * 2)) {
+            mapSeenMasternodeBroadcast.erase(it3++);
+            masternodeSync.mapSeenSyncMNB.erase((*it3).second.GetHash());
+        } else {
+            ++it3;
+        }
+    }
+
+    // remove expired mapSeenMasternodePing
+    map<uint256, CMasternodePing>::iterator it4 = mapSeenMasternodePing.begin();
+    while (it4 != mapSeenMasternodePing.end()) {
+        if ((*it4).second.sigTime < GetTime() - (MASTERNODE_REMOVAL_SECONDS * 2)) {
+            mapSeenMasternodePing.erase(it4++);
+        } else {
+            ++it4;
+        }
+    }
 }
 
 void CMasternodeMan::Clear()
@@ -299,6 +333,8 @@ void CMasternodeMan::Clear()
     mAskedUsForMasternodeList.clear();
     mWeAskedForMasternodeList.clear();
     mWeAskedForMasternodeListEntry.clear();
+    mapSeenMasternodeBroadcast.clear();
+    mapSeenMasternodePing.clear();
     nDsqCount = 0;
 }
 
@@ -674,7 +710,126 @@ void CMasternodeMan::ProcessMessage(CNode* pfrom, std::string& strCommand, CData
 
     LOCK(cs_process_message);
 
-    if (strCommand == "dsee") { //DarkSend Election Entry
+    if (strCommand == "mnb") { //Masternode Broadcast
+        CMasternodeBroadcast mnb;
+        vRecv >> mnb;
+
+        if (mapSeenMasternodeBroadcast.count(mnb.GetHash())) { //seen
+            masternodeSync.AddedMasternodeList(mnb.GetHash());
+            return;
+        }
+        mapSeenMasternodeBroadcast.insert(make_pair(mnb.GetHash(), mnb));
+
+        int nDoS = 0;
+        if (!mnb.CheckAndUpdate(nDoS)) {
+            if (nDoS > 0)
+                Misbehaving(pfrom->GetId(), nDoS);
+
+            //failed
+            return;
+        }
+
+        // make sure the vout that was signed is related to the transaction that spawned the Masternode
+        //  - this is expensive, so it's only done once per Masternode
+        if (!obfuScationSigner.IsVinAssociatedWithPubkey(mnb.vin, mnb.pubKeyCollateralAddress)) {
+            LogPrint("masternode","mnb - Got mismatched pubkey and vin\n");
+            Misbehaving(pfrom->GetId(), 33);
+            return;
+        }
+
+        // make sure it's still unspent
+        //  - this is checked later by .check() in many places and by ThreadCheckObfuScationPool()
+        if (mnb.CheckInputsAndAdd(nDoS)) {
+            // use this as a peer
+            addrman.Add(CAddress(mnb.addr), pfrom->addr, 2 * 60 * 60);
+            masternodeSync.AddedMasternodeList(mnb.GetHash());
+        } else {
+            LogPrint("masternode","mnb - Rejected Masternode entry %s\n", mnb.vin.prevout.hash.ToString());
+
+            if (nDoS > 0)
+                Misbehaving(pfrom->GetId(), nDoS);
+        }
+    }
+
+    else if (strCommand == "mnp") { //Masternode Ping
+        CMasternodePing mnp;
+        vRecv >> mnp;
+
+        LogPrint("masternode", "mnp - Masternode ping, vin: %s\n", mnp.vin.prevout.hash.ToString());
+
+        if (mapSeenMasternodePing.count(mnp.GetHash())) return; //seen
+        mapSeenMasternodePing.insert(make_pair(mnp.GetHash(), mnp));
+
+        int nDoS = 0;
+        if (mnp.CheckAndUpdate(nDoS)) return;
+
+        if (nDoS > 0) {
+            // if anything significant failed, mark that node
+            Misbehaving(pfrom->GetId(), nDoS);
+        } else {
+            // if nothing significant failed, search existing Masternode list
+            CMasternode* pmn = Find(mnp.vin);
+            // if it's known, don't ask for the mnb, just return
+            if (pmn != NULL) return;
+        }
+
+        // something significant is broken or mn is unknown,
+        // we might have to ask for a masternode entry once
+        AskForMN(pfrom, mnp.vin);
+
+    } else if (strCommand == "dseg") { //Get Masternode list or specific entry
+
+        CTxIn vin;
+        vRecv >> vin;
+
+        if (vin == CTxIn()) { //only should ask for this once
+            //local network
+            bool isLocal = (pfrom->addr.IsRFC1918() || pfrom->addr.IsLocal());
+
+            if (!isLocal && Params().NetworkID() == CBaseChainParams::MAIN) {
+                std::map<CNetAddr, int64_t>::iterator i = mAskedUsForMasternodeList.find(pfrom->addr);
+                if (i != mAskedUsForMasternodeList.end()) {
+                    int64_t t = (*i).second;
+                    if (GetTime() < t) {
+                        Misbehaving(pfrom->GetId(), 34);
+                        LogPrint("masternode","dseg - peer already asked me for the list\n");
+                        return;
+                    }
+                }
+                int64_t askAgain = GetTime() + MASTERNODES_DSEG_SECONDS;
+                mAskedUsForMasternodeList[pfrom->addr] = askAgain;
+            }
+        } //else, asking for a specific node which is ok
+
+
+        int nInvCount = 0;
+
+        BOOST_FOREACH (CMasternode& mn, vMasternodes) {
+            if (mn.addr.IsRFC1918()) continue; //local network
+
+            if (mn.IsEnabled()) {
+                LogPrint("masternode", "dseg - Sending Masternode entry - %s \n", mn.vin.prevout.hash.ToString());
+                if (vin == CTxIn() || vin == mn.vin) {
+                    CMasternodeBroadcast mnb = CMasternodeBroadcast(mn);
+                    uint256 hash = mnb.GetHash();
+                    pfrom->PushInventory(CInv(MSG_MASTERNODE_ANNOUNCE, hash));
+                    nInvCount++;
+
+                    if (!mapSeenMasternodeBroadcast.count(hash)) mapSeenMasternodeBroadcast.insert(make_pair(hash, mnb));
+
+                    if (vin == mn.vin) {
+                        LogPrint("masternode", "dseg - Sent 1 Masternode entry to peer %i\n", pfrom->GetId());
+                        return;
+                    }
+                }
+            }
+        }
+
+        if (vin == CTxIn()) {
+            pfrom->PushMessage(NetMsgType::SSC, MASTERNODE_SYNC_LIST, nInvCount);
+            LogPrint("masternode", "dseg - Sent %d Masternode entries to peer %i\n", nInvCount, pfrom->GetId());
+        }
+    } else if (strCommand == "dsee") { //DarkSend Election Entry
 
         CTxIn vin;
         CService addr;
@@ -1051,6 +1206,25 @@ void CMasternodeMan::Remove(CTxIn vin)
         }
     }
 }
+
+/*
+void CMasternodeMan::UpdateMasternodeList(CMasternodeBroadcast mnb)
+{
+    mapSeenMasternodePing.insert(make_pair(mnb.lastPing.GetHash(), mnb.lastPing));
+    mapSeenMasternodeBroadcast.insert(make_pair(mnb.GetHash(), mnb));
+    masternodeSync.AddedMasternodeList(mnb.GetHash());
+
+    LogPrint("masternode","CMasternodeMan::UpdateMasternodeList -- masternode=%s\n", mnb.vin.prevout.ToStringShort());
+
+    CMasternode* pmn = Find(mnb.vin);
+    if (pmn == NULL) {
+        CMasternode mn(mnb);
+        Add(mn);
+    } else {
+        pmn->UpdateFromNewBroadcast(mnb);
+    }
+}
+*/
 
 std::string CMasternodeMan::ToString() const
 {

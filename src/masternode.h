@@ -44,6 +44,73 @@ extern map<int64_t, uint256> mapCacheBlockHashes;
 bool GetBlockHash(uint256& hash, int nBlockHeight);
 
 //
+// The Masternode Ping Class : Contains a different serialize method for sending pings from masternodes throughout the network
+//
+
+class CMasternodePing
+{
+public:
+    CTxIn vin;
+    uint256 blockHash;
+    int64_t sigTime; //mnb message times
+    std::vector<unsigned char> vchSig;
+    //removed stop
+
+    CMasternodePing();
+    CMasternodePing(CTxIn& newVin);
+
+    IMPLEMENT_SERIALIZE
+    (
+        {
+            READWRITE(vin);
+            READWRITE(blockHash);
+            READWRITE(sigTime);
+            READWRITE(vchSig);
+        }
+    )
+
+    bool CheckAndUpdate(int& nDos, bool fRequireEnabled = true, bool fCheckSigTimeOnly = false);
+    bool Sign(CKey& keyMasternode, CPubKey& pubKeyMasternode);
+    bool VerifySignature(CPubKey& pubKeyMasternode, int &nDos);
+    void Relay();
+
+    uint256 GetHash()
+    {
+        CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
+        ss << vin;
+        ss << sigTime;
+        return ss.GetHash();
+    }
+
+    void swap(CMasternodePing& first, CMasternodePing& second) // nothrow
+    {
+        // enable ADL (not necessary in our case, but good practice)
+        using std::swap;
+
+        // by swapping the members of two classes,
+        // the two classes are effectively swapped
+        swap(first.vin, second.vin);
+        swap(first.blockHash, second.blockHash);
+        swap(first.sigTime, second.sigTime);
+        swap(first.vchSig, second.vchSig);
+    }
+
+    CMasternodePing& operator=(CMasternodePing from)
+    {
+        swap(*this, from);
+        return *this;
+    }
+    friend bool operator==(const CMasternodePing& a, const CMasternodePing& b)
+    {
+        return a.vin == b.vin && a.blockHash == b.blockHash;
+    }
+    friend bool operator!=(const CMasternodePing& a, const CMasternodePing& b)
+    {
+        return !(a == b);
+    }
+};
+
+//
 // The Masternode Class. For managing the darksend process. It contains the input of the 1000TX, signature to prove
 // it's the one who own that ip address and code for calculating the payment election.
 //
@@ -235,6 +302,54 @@ public:
 
         return strStatus;
     }
+};
+
+//
+// The Masternode Broadcast Class : Contains a different serialize method for sending masternodes through the network
+//
+
+class CMasternodeBroadcast : public CMasternode
+{
+public:
+    CMasternodeBroadcast();
+    CMasternodeBroadcast(CService newAddr, CTxIn newVin, CPubKey newPubkey, CPubKey newPubkey2, int protocolVersionIn);
+    CMasternodeBroadcast(const CMasternode& mn);
+
+    bool CheckAndUpdate(int& nDoS);
+    bool CheckInputsAndAdd(int& nDos);
+    bool Sign(CKey& keyCollateralAddress);
+    bool VerifySignature();
+    void Relay();
+    std::string GetOldStrMessage();
+    std::string GetNewStrMessage();
+
+    IMPLEMENT_SERIALIZE
+    (
+        {
+            READWRITE(vin);
+            READWRITE(addr);
+            READWRITE(pubKeyCollateralAddress);
+            READWRITE(pubKeyMasternode);
+            READWRITE(sig);
+            READWRITE(sigTime);
+            READWRITE(protocolVersion);
+            READWRITE(lastPing);
+            READWRITE(nLastDsq);
+        }
+    )
+
+    uint256 GetHash()
+    {
+        CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
+        ss << sigTime;
+        ss << pubKeyCollateralAddress;
+        return ss.GetHash();
+    }
+
+    /// Create Masternode broadcast, needs to be relayed manually after that
+    static bool Create(CTxIn vin, CService service, CKey keyCollateralAddressNew, CPubKey pubKeyCollateralAddressNew, CKey keyMasternodeNew, CPubKey pubKeyMasternodeNew, std::string& strErrorRet, CMasternodeBroadcast& mnbRet);
+    static bool Create(std::string strService, std::string strKey, std::string strTxHash, std::string strOutputIndex, std::string& strErrorRet, CMasternodeBroadcast& mnbRet, bool fOffline = false);
+    static bool CheckDefaultPort(std::string strService, std::string& strErrorRet, std::string strContext);
 };
 
 #endif

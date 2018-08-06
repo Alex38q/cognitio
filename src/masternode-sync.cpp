@@ -48,7 +48,7 @@ bool CMasternodeSync::IsBlockchainSynced()
     TRY_LOCK(cs_main, lockMain);
     if (!lockMain) return false;
 
-    CBlockIndex* pindex = chainActive.Tip();
+    CBlockIndex* pindex = pindexBest;
     if (pindex == NULL) return false;
 
 
@@ -182,7 +182,7 @@ std::string CMasternodeSync::GetSyncStatus()
 
 void CMasternodeSync::ProcessMessage(CNode* pfrom, std::string& strCommand, CDataStream& vRecv)
 {
-    if (strCommand == NetMsgType::SSC) { //Sync status count
+    if (strCommand == "ssc") { //Sync status count
         int nItemID;
         int nCount;
         vRecv >> nItemID >> nCount;
@@ -223,7 +223,7 @@ void CMasternodeSync::ClearFulfilledRequest()
     if (!lockRecv) return;
 
     BOOST_FOREACH (CNode* pnode, vNodes) {
-        pnode->ClearFulfilledRequest(NetMsgType::GETSPORK);
+        pnode->ClearFulfilledRequest("getspork");
         pnode->ClearFulfilledRequest("mnsync");
         pnode->ClearFulfilledRequest("mnwsync");
         pnode->ClearFulfilledRequest("busync");
@@ -258,23 +258,23 @@ void CMasternodeSync::Process()
     if (RequestedMasternodeAssets == MASTERNODE_SYNC_INITIAL) GetNextAsset();
 
     // sporks synced but blockchain is not, wait until we're almost at a recent block to continue
-    if (Params().NetworkID() != CBaseChainParams::REGTEST &&
+    if (Params().NetworkID() != Params().Network::REGTEST &&
         !IsBlockchainSynced() && RequestedMasternodeAssets > MASTERNODE_SYNC_SPORKS) return;
 
     TRY_LOCK(cs_vNodes, lockRecv);
     if (!lockRecv) return;
 
     BOOST_FOREACH (CNode* pnode, vNodes) {
-        if (Params().NetworkID() == CBaseChainParams::REGTEST) {
+        if (Params().NetworkID() == Params().Network::REGTEST) {
             if (RequestedMasternodeAttempt <= 2) {
-                pnode->PushMessage(NetMsgType::GETSPORKS); //get current network sporks
+                pnode->PushMessage("getsporks"); //get current network sporks
             } else if (RequestedMasternodeAttempt < 4) {
                 mnodeman.DsegUpdate(pnode);
             } else if (RequestedMasternodeAttempt < 6) {
                 int nMnCount = mnodeman.CountEnabled();
-                pnode->PushMessage(NetMsgType::MNGET, nMnCount); //sync payees
+                pnode->PushMessage("mnget", nMnCount); //sync payees
                 uint256 n = 0;
-                pnode->PushMessage(NetMsgType::MNVS, n); //sync masternode votes
+                pnode->PushMessage("mnvs", n); //sync masternode votes
             } else {
                 RequestedMasternodeAssets = MASTERNODE_SYNC_FINISHED;
             }
@@ -354,11 +354,11 @@ void CMasternodeSync::Process()
 
                 if (RequestedMasternodeAttempt >= MASTERNODE_SYNC_THRESHOLD * 3) return;
 
-                CBlockIndex* pindexPrev = chainActive.Tip();
+                CBlockIndex* pindexPrev = pindexBest;
                 if (pindexPrev == NULL) return;
 
                 int nMnCount = mnodeman.CountEnabled();
-                pnode->PushMessage(NetMsgType::MNGET, nMnCount); //sync payees
+                pnode->PushMessage("mnget", nMnCount); //sync payees
                 RequestedMasternodeAttempt++;
 
                 return;
@@ -395,7 +395,7 @@ void CMasternodeSync::Process()
                 if (RequestedMasternodeAttempt >= MASTERNODE_SYNC_THRESHOLD * 3) return;
 
                 uint256 n = 0;
-                pnode->PushMessage(NetMsgType::MNVS, n); //sync masternode votes
+                pnode->PushMessage("mnvs", n); //sync masternode votes
                 RequestedMasternodeAttempt++;
 
                 return;
