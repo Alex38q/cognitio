@@ -123,7 +123,7 @@ public:
     // Find an entry
     CMasternode* Find(const CScript& payee);
     CMasternode* Find(const CTxIn& vin);
-    CMasternode* Find(const CPubKey& pubKeyMasternode);
+    CMasternode* Find(const CPubKey& pubkey2);
 
     //Find an entry thta do not match every entry provided vector
     CMasternode* FindOldestNotInVec(const std::vector<CTxIn> &vVins, int nMinimumAge);

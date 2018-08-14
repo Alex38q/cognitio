@@ -443,7 +443,7 @@ bool CMasternodePayments::ProcessBlock(int nBlockHeight)
     }
 
     std::string errorMessage;
-    CPubKey pubKeyMasternode;
+    CPubKey pubkey2;
     CKey keyMasternode;
 
     if(Sign(newWinner))

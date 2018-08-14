@@ -1716,10 +1716,10 @@ void CBudgetVote::Relay()
     RelayInv(inv);
 }
 
-bool CBudgetVote::Sign(CKey& keyMasternode, CPubKey& pubKeyMasternode)
+bool CBudgetVote::Sign(CKey& keyMasternode, CPubKey& pubkey2)
 {
     // Choose coins to use
-    CPubKey pubKeyCollateralAddress;
+    CPubKey pubkey;
     CKey keyCollateralAddress;
 
     std::string errorMessage;
@@ -1730,7 +1730,7 @@ bool CBudgetVote::Sign(CKey& keyMasternode, CPubKey& pubKeyMasternode)
         return false;
     }
 
-    if (!darkSendSigner.VerifyMessage(pubKeyMasternode, vchSig, strMessage, errorMessage)) {
+    if (!darkSendSigner.VerifyMessage(pubkey2, vchSig, strMessage, errorMessage)) {
         LogPrint("mnbudget","CBudgetVote::Sign - Error upon calling VerifyMessage");
         return false;
     }
@@ -2131,17 +2131,17 @@ TrxValidationStatus CFinalizedBudget::IsTransactionValid(const CTransaction& txN
 
 void CFinalizedBudget::SubmitVote()
 {
-    CPubKey pubKeyMasternode;
+    CPubKey pubkey2;
     CKey keyMasternode;
     std::string errorMessage;
 
-    if (!darkSendSigner.SetKey(strMasterNodePrivKey, errorMessage, keyMasternode, pubKeyMasternode)) {
+    if (!darkSendSigner.SetKey(strMasterNodePrivKey, errorMessage, keyMasternode, pubkey2)) {
         LogPrint("mnbudget","CFinalizedBudget::SubmitVote - Error upon calling SetKey\n");
         return;
     }
 
     CFinalizedBudgetVote vote(activeMasternode.vin, GetHash());
-    if (!vote.Sign(keyMasternode, pubKeyMasternode)) {
+    if (!vote.Sign(keyMasternode, pubkey2)) {
         LogPrint("mnbudget","CFinalizedBudget::SubmitVote - Failure to sign.");
         return;
     }
@@ -2219,10 +2219,10 @@ void CFinalizedBudgetVote::Relay()
     RelayInv(inv);
 }
 
-bool CFinalizedBudgetVote::Sign(CKey& keyMasternode, CPubKey& pubKeyMasternode)
+bool CFinalizedBudgetVote::Sign(CKey& keyMasternode, CPubKey& pubkey2)
 {
     // Choose coins to use
-    CPubKey pubKeyCollateralAddress;
+    CPubKey pubkey;
     CKey keyCollateralAddress;
 
     std::string errorMessage;
@@ -2233,7 +2233,7 @@ bool CFinalizedBudgetVote::Sign(CKey& keyMasternode, CPubKey& pubKeyMasternode)
         return false;
     }
 
-    if (!darkSendSigner.VerifyMessage(pubKeyMasternode, vchSig, strMessage, errorMessage)) {
+    if (!darkSendSigner.VerifyMessage(pubkey2, vchSig, strMessage, errorMessage)) {
         LogPrint("mnbudget","CFinalizedBudgetVote::Sign - Error upon calling VerifyMessage");
         return false;
     }

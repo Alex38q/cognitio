@@ -75,7 +75,7 @@ public:
     CBudgetVote();
     CBudgetVote(CTxIn vin, uint256 nProposalHash, int nVoteIn);
 
-    bool Sign(CKey& keyMasternode, CPubKey& pubKeyMasternode);
+    bool Sign(CKey& keyMasternode, CPubKey& pubkey2);
     bool SignatureValid(bool fSignatureCheck);
     void Relay();
 
@@ -123,7 +123,7 @@ public:
     CFinalizedBudgetVote();
     CFinalizedBudgetVote(CTxIn vinIn, uint256 nBudgetHashIn);
 
-    bool Sign(CKey& keyMasternode, CPubKey& pubKeyMasternode);
+    bool Sign(CKey& keyMasternode, CPubKey& pubkey2);
     bool SignatureValid(bool fSignatureCheck);
     void Relay();
 

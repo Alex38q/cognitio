@@ -135,6 +135,8 @@ public:
         nPOSStartBlock = 500;
 
         nBudgetFeeConfirmations = 6; // Number of confirmations for the finalization fee
+
+        strNetworkID = "main";
     }
 
     virtual const CBlock& GenesisBlock() const { return genesis; }
@@ -194,6 +196,7 @@ public:
         convertSeeds(vFixedSeeds, pnTestnetSeed, ARRAYLEN(pnTestnetSeed), nDefaultPort);
 
         nLastPOWBlock = 210000;
+        strNetworkID = "test";
     }
     virtual Network NetworkID() const { return CChainParams::TESTNET; }
 };

@@ -64,6 +64,7 @@ public:
     virtual bool RequireRPCPassword() const { return true; }
     const string& DataDir() const { return strDataDir; }
     virtual Network NetworkID() const = 0;
+    std::string NetworkIDString() const { return strNetworkID; }
     const vector<CDNSSeedData>& DNSSeeds() const { return vSeeds; }
     const std::vector<unsigned char> &Base58Prefix(Base58Type type) const { return base58Prefixes[type]; }
     virtual const vector<CAddress>& FixedSeeds() const = 0;
@@ -96,6 +97,7 @@ protected:
     //std::string strSporkKey;
     //std::string strMasternodePaymentsPubKey;
     int64_t nBudgetFeeConfirmations; // Governance
+    std::string strNetworkID;
 };
 
 /**

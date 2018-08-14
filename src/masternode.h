@@ -70,8 +70,8 @@ public:
     )
 
     bool CheckAndUpdate(int& nDos, bool fRequireEnabled = true, bool fCheckSigTimeOnly = false);
-    bool Sign(CKey& keyMasternode, CPubKey& pubKeyMasternode);
-    bool VerifySignature(CPubKey& pubKeyMasternode, int &nDos);
+    bool Sign(CKey& keyMasternode, CPubKey& pubkey2);
+    bool VerifySignature(CPubKey& pubkey2, int &nDos);
     void Relay();
 
     uint256 GetHash()
@@ -151,6 +151,7 @@ public:
     int nScanningErrorCount;
     int nLastScanningErrorBlockHeight;
     int64_t nLastPaid;
+    CMasternodePing lastPing;
 
 
     CMasternode();
@@ -174,6 +175,7 @@ public:
         swap(first.sigTime, second.sigTime);
         swap(first.lastDseep, second.lastDseep);
         swap(first.lastTimeSeen, second.lastTimeSeen);
+        swap(first.lastPing, second.lastPing);
         swap(first.cacheInputAge, second.cacheInputAge);
         swap(first.cacheInputAgeBlock, second.cacheInputAgeBlock);
         swap(first.unitTest, second.unitTest);
@@ -223,6 +225,7 @@ public:
                 READWRITE(sigTime);
                 READWRITE(lastDseep);
                 READWRITE(lastTimeSeen);
+                READWRITE(lastPing);
                 READWRITE(cacheInputAge);
                 READWRITE(cacheInputAgeBlock);
                 READWRITE(unitTest);
@@ -262,6 +265,18 @@ public:
 
     void Check();
 
+    bool IsBroadcastedWithin(int seconds)
+    {
+        return (GetAdjustedTime() - sigTime) < seconds;
+    }
+
+    bool IsPingedWithin(int seconds, int64_t now = -1)
+    {
+        now == -1 ? now = GetAdjustedTime() : now;
+
+        return (lastPing == CMasternodePing()) ? false : now - lastPing.sigTime < seconds;
+    }
+
     bool UpdatedWithin(int seconds)
     {
         // LogPrintf("UpdatedWithin %d, %d --  %d \n", GetAdjustedTime() , lastTimeSeen, (GetAdjustedTime() - lastTimeSeen) < seconds);
@@ -272,6 +287,7 @@ public:
     void Disable()
     {
         lastTimeSeen = 0;
+        lastPing = CMasternodePing();
     }
 
     bool IsEnabled()
@@ -302,6 +318,8 @@ public:
 
         return strStatus;
     }
+
+    bool IsValidNetAddr();
 };
 
 //
@@ -328,8 +346,8 @@ public:
         {
             READWRITE(vin);
             READWRITE(addr);
-            READWRITE(pubKeyCollateralAddress);
-            READWRITE(pubKeyMasternode);
+            READWRITE(pubkey);
+            READWRITE(pubkey2);
             READWRITE(sig);
             READWRITE(sigTime);
             READWRITE(protocolVersion);
@@ -342,12 +360,12 @@ public:
     {
         CHashWriter ss(SER_GETHASH, PROTOCOL_VERSION);
         ss << sigTime;
-        ss << pubKeyCollateralAddress;
+        ss << pubkey;
         return ss.GetHash();
     }
 
     /// Create Masternode broadcast, needs to be relayed manually after that
-    static bool Create(CTxIn vin, CService service, CKey keyCollateralAddressNew, CPubKey pubKeyCollateralAddressNew, CKey keyMasternodeNew, CPubKey pubKeyMasternodeNew, std::string& strErrorRet, CMasternodeBroadcast& mnbRet);
+    static bool Create(CTxIn vin, CService service, CKey keyCollateralAddressNew, CPubKey pubkeyNew, CKey keyMasternodeNew, CPubKey pubkey2New, std::string& strErrorRet, CMasternodeBroadcast& mnbRet);
     static bool Create(std::string strService, std::string strKey, std::string strTxHash, std::string strOutputIndex, std::string& strErrorRet, CMasternodeBroadcast& mnbRet, bool fOffline = false);
     static bool CheckDefaultPort(std::string strService, std::string& strErrorRet, std::string strContext);
 };

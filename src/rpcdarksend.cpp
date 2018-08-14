@@ -647,18 +647,18 @@ Value masternode(const Array& params, bool fHelp)
             std::vector<unsigned char> vchMasterNodeSignature;
             std::string strMasterNodeSignMessage;
 
-            CPubKey pubKeyCollateralAddress;
+            CPubKey pubkey;
             CKey keyCollateralAddress;
-            CPubKey pubKeyMasternode;
+            CPubKey pubkey2;
             CKey keyMasternode;
 
-            if(!darkSendSigner.SetKey(mne.getPrivKey(), errorMessage, keyMasternode, pubKeyMasternode)){
+            if(!darkSendSigner.SetKey(mne.getPrivKey(), errorMessage, keyMasternode, pubkey2)){
                 printf(" Error upon calling SetKey for %s\n", mne.getAlias().c_str());
                 failed++;
                 continue;
             }
 
-            CMasternode* pmn = mnodeman.Find(pubKeyMasternode);
+            CMasternode* pmn = mnodeman.Find(pubkey2);
             if(pmn == NULL)
             {
                 printf("Can't find masternode by pubkey for %s\n", mne.getAlias().c_str());
@@ -674,7 +674,7 @@ Value masternode(const Array& params, bool fHelp)
                 continue;
             }
 
-            if(!darkSendSigner.VerifyMessage(pubKeyMasternode, vchMasterNodeSignature, strMessage, errorMessage)){
+            if(!darkSendSigner.VerifyMessage(pubkey2, vchMasterNodeSignature, strMessage, errorMessage)){
                 printf(" Error upon calling VerifyMessage for %s\n", mne.getAlias().c_str());
                 failed++;
                 continue;
@@ -706,22 +706,22 @@ Value masternode(const Array& params, bool fHelp)
         if(vote == "nay") nVote = -1;
 
         // Choose coins to use
-        CPubKey pubKeyCollateralAddress;
+        CPubKey pubkey;
         CKey keyCollateralAddress;
-        CPubKey pubKeyMasternode;
+        CPubKey pubkey2;
         CKey keyMasternode;
 
         std::string errorMessage;
         std::vector<unsigned char> vchMasterNodeSignature;
         std::string strMessage = activeMasternode.vin.ToString() + boost::lexical_cast<std::string>(nVote);
 
-        if(!darkSendSigner.SetKey(strMasterNodePrivKey, errorMessage, keyMasternode, pubKeyMasternode))
+        if(!darkSendSigner.SetKey(strMasterNodePrivKey, errorMessage, keyMasternode, pubkey2))
             return(" Error upon calling SetKey");
 
         if(!darkSendSigner.SignMessage(strMessage, errorMessage, vchMasterNodeSignature, keyMasternode))
             return(" Error upon calling SignMessage");
 
-        if(!darkSendSigner.VerifyMessage(pubKeyMasternode, vchMasterNodeSignature, strMessage, errorMessage))
+        if(!darkSendSigner.VerifyMessage(pubkey2, vchMasterNodeSignature, strMessage, errorMessage))
             return(" Error upon calling VerifyMessage");
 
         //send to all peers

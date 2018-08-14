@@ -5447,6 +5447,7 @@ build/masternode.o: src/masternode.cpp src/masternode.h \
 		src/sph_skein.h \
 		src/sph_cubehash.h \
 		src/masternodeman.h \
+		src/masternode-sync.h \
 		src/darksend.h \
 		src/activemasternode.h \
 		src/init.h \
