@@ -30,13 +30,17 @@ class uint256;
 #define MASTERNODE_MIN_CONFIRMATIONS           10
 #define MASTERNODE_MIN_DSEEP_SECONDS           (30*60)
 #define MASTERNODE_MIN_DSEE_SECONDS            (5*60)
+#define MASTERNODE_MIN_MNB_SECONDS             (5*60) // Duplicate; could change in the future
 #define MASTERNODE_PING_SECONDS                (1*60)
 #define MASTERNODE_EXPIRATION_SECONDS          (65*60)
 #define MASTERNODE_REMOVAL_SECONDS             (70*60)
+#define MASTERNODE_CHECK_SECONDS               5
 
 using namespace std;
 
 class CMasternode;
+class CMasternodeBroadcast;
+class CMasternodePing;
 
 extern CCriticalSection cs_masternodes;
 extern map<int64_t, uint256> mapCacheBlockHashes;
@@ -119,6 +123,7 @@ class CMasternode
 private:
     // critical section to protect the inner data structures
     mutable CCriticalSection cs;
+    int64_t lastTimeChecked;
 
 public:
     enum state {
@@ -131,8 +136,8 @@ public:
 
     CTxIn vin;  
     CService addr;
-    CPubKey pubkey;
-    CPubKey pubkey2;
+    CPubKey pubkey; // pubKeyCollateralAddress
+    CPubKey pubkey2; // pubKeyMasternode
     std::vector<unsigned char> sig;
     int activeState;
     int64_t sigTime; //dsee message times
@@ -156,6 +161,7 @@ public:
 
     CMasternode();
     CMasternode(const CMasternode& other);
+    CMasternode(const CMasternodeBroadcast& mnb);
     CMasternode(CService newAddr, CTxIn newVin, CPubKey newPubkey, std::vector<unsigned char> newSig, int64_t newSigTime, CPubKey newPubkey2, int protocolVersionIn, CScript donationAddress, int donationPercentage);
 
 
@@ -247,6 +253,8 @@ public:
         return (GetAdjustedTime() - nLastPaid);
     }
 
+    bool UpdateFromNewBroadcast(CMasternodeBroadcast& mnb);
+
     void UpdateLastSeen(int64_t override=0)
     {
         if(override == 0){
@@ -263,7 +271,7 @@ public:
         return n;
     }
 
-    void Check();
+    void Check(bool forceCheck = false);
 
     bool IsBroadcastedWithin(int seconds)
     {

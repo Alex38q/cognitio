@@ -90,6 +90,7 @@ CMasternode::CMasternode()
     nLastScanningErrorBlockHeight = 0;
     //mark last paid as current for new entries
     nLastPaid = GetAdjustedTime();
+    lastTimeChecked = 0;
 }
 
 CMasternode::CMasternode(const CMasternode& other)
@@ -118,6 +119,36 @@ CMasternode::CMasternode(const CMasternode& other)
     nLastScanningErrorBlockHeight = other.nLastScanningErrorBlockHeight;
     nLastPaid = other.nLastPaid;
     nLastPaid = GetAdjustedTime();
+    lastTimeChecked = 0;
+}
+
+CMasternode::CMasternode(const CMasternodeBroadcast& mnb)
+{
+    LOCK(cs);
+    vin = mnb.vin;
+    addr = mnb.addr;
+    pubkey = mnb.pubkey;
+    pubkey2 = mnb.pubkey2;
+    sig = mnb.sig;
+    activeState = mnb.activeState;
+    sigTime = mnb.sigTime;
+    lastDseep = mnb.lastDseep;
+    lastTimeSeen = mnb.lastTimeSeen;
+    cacheInputAge = mnb.cacheInputAge;
+    cacheInputAgeBlock = mnb.cacheInputAgeBlock;
+    unitTest = mnb.unitTest;
+    allowFreeTx = mnb.allowFreeTx;
+    protocolVersion = mnb.protocolVersion;
+    nLastDsq = mnb.nLastDsq;
+    donationAddress = mnb.donationAddress;
+    donationPercentage = mnb.donationPercentage;
+    nVote = mnb.nVote;
+    lastVote = mnb.lastVote;
+    nScanningErrorCount = mnb.nScanningErrorCount;
+    nLastScanningErrorBlockHeight = mnb.nLastScanningErrorBlockHeight;
+    nLastPaid = mnb.nLastPaid;
+    nLastPaid = GetAdjustedTime();
+    lastTimeChecked = 0;
 }
 
 CMasternode::CMasternode(CService newAddr, CTxIn newVin, CPubKey newPubkey, std::vector<unsigned char> newSig, int64_t newSigTime, CPubKey newPubkey2, int protocolVersionIn, CScript newDonationAddress, int newDonationPercentage)
@@ -144,6 +175,30 @@ CMasternode::CMasternode(CService newAddr, CTxIn newVin, CPubKey newPubkey, std:
     lastVote = 0;
     nScanningErrorCount = 0;
     nLastScanningErrorBlockHeight = 0;
+    lastTimeChecked = 0;
+}
+
+//
+// When a new masternode broadcast is sent, update our information
+//
+bool CMasternode::UpdateFromNewBroadcast(CMasternodeBroadcast& mnb)
+{
+    if (mnb.sigTime > sigTime) {
+        pubkey2 = mnb.pubkey2;
+        pubkey = mnb.pubkey;
+        sigTime = mnb.sigTime;
+        sig = mnb.sig;
+        protocolVersion = mnb.protocolVersion;
+        addr = mnb.addr;
+        lastTimeChecked = 0;
+        int nDoS = 0;
+        if (mnb.lastPing == CMasternodePing() || (mnb.lastPing != CMasternodePing() && mnb.lastPing.CheckAndUpdate(nDoS, false))) {
+            lastPing = mnb.lastPing;
+            mnodeman.mapSeenMasternodePing.insert(make_pair(lastPing.GetHash(), lastPing));
+        }
+        return true;
+    }
+    return false;
 }
 
 //
@@ -168,9 +223,12 @@ uint256 CMasternode::CalculateScore(int mod, int64_t nBlockHeight)
     return r;
 }
 
-void CMasternode::Check()
+void CMasternode::Check(bool forceCheck)
 {
     if(ShutdownRequested()) return;
+
+    if (!forceCheck && (GetTime() - lastTimeChecked < MASTERNODE_CHECK_SECONDS)) return;
+    lastTimeChecked = GetTime();
 
     //TODO: Random segfault with this line removed
     TRY_LOCK(cs_main, lockRecv);
@@ -408,7 +466,7 @@ bool CMasternodeBroadcast::CheckAndUpdate(int& nDos)
         return error("CMasternodeBroadcast::CheckAndUpdate - Got bad Masternode address signature : %s", errorMessage);
     }
 
-    if (Params().NetworkID() == CBaseChainParams::MAIN) {
+    if (Params().NetworkID() == Params().Network::MAIN) {
         if (addr.GetPort() != 11771) return false;
     } else if (addr.GetPort() == 11771)
         return false;
@@ -468,7 +526,7 @@ bool CMasternodeBroadcast::CheckInputsAndAdd(int& nDoS)
 
     CValidationState state;
     CMutableTransaction tx = CMutableTransaction();
-    CTxOut vout = CTxOut(9999.99 * COIN, obfuScationPool.collateralPubKey);
+    CTxOut vout = CTxOut(9999.99 * COIN, darkSendPool.collateralPubKey);
     tx.vin.push_back(vin);
     tx.vout.push_back(vout);
 
